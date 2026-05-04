@@ -59,7 +59,8 @@ export function RequirementPanel({
       </div>
       {error && (
         <div className="input-error-message" role="alert">
-          {error}
+          <strong>Could not groom story.</strong>
+          <span>{error}</span>
         </div>
       )}
     </section>

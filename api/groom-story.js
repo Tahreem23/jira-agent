@@ -10,6 +10,12 @@ const AUTH_KEYWORDS = [
   "access"
 ];
 
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const RATE_LIMIT_MAX_REQUESTS = 5;
+const rateLimitStore = globalThis.__groomStoryRateLimitStore || new Map();
+
+globalThis.__groomStoryRateLimitStore = rateLimitStore;
+
 const GROOMING_SYSTEM_PROMPT = `
 You are a senior business analyst grooming messy client requirements into Jira stories.
 
@@ -150,6 +156,37 @@ function logGroomStory(message, details = {}) {
   console.log("[api/groom-story]", message, details);
 }
 
+function getClientIp(req) {
+  const forwardedFor = req.headers["x-forwarded-for"];
+
+  if (typeof forwardedFor === "string" && forwardedFor.trim()) {
+    return forwardedFor.split(",")[0].trim();
+  }
+
+  return req.socket?.remoteAddress || "unknown";
+}
+
+function isRateLimited(ip) {
+  const now = Date.now();
+  const record = rateLimitStore.get(ip);
+
+  if (!record || now > record.resetAt) {
+    rateLimitStore.set(ip, {
+      count: 1,
+      resetAt: now + RATE_LIMIT_WINDOW_MS
+    });
+    return false;
+  }
+
+  if (record.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return true;
+  }
+
+  record.count += 1;
+  rateLimitStore.set(ip, record);
+  return false;
+}
+
 export default async function handler(req, res) {
   const requestStartedAt = Date.now();
   const timestamp = new Date().toISOString();
@@ -157,6 +194,17 @@ export default async function handler(req, res) {
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed." });
+  }
+
+  const clientIp = getClientIp(req);
+
+  if (isRateLimited(clientIp)) {
+    logGroomStory("Rate limit exceeded", {
+      ip: clientIp
+    });
+    return res.status(429).json({
+      error: "Too many requests. Please try again later."
+    });
   }
 
   const requirement = String(req.body?.requirement || "").trim();

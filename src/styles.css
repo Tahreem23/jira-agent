@@ -204,6 +204,8 @@ textarea:focus {
 }
 
 .input-error-message {
+  display: grid;
+  gap: 3px;
   margin: -8px 22px 22px;
   padding: 10px 12px;
   border: 1px solid #f1b6af;
@@ -212,6 +214,10 @@ textarea:focus {
   color: #9b2c22;
   font-size: 0.9rem;
   font-weight: 750;
+}
+
+.input-error-message span {
+  font-weight: 650;
 }
 
 button {
