@@ -74,6 +74,18 @@ function normalizeStoryPayload(payload) {
 export async function groomRequirement(requirement) {
   const cleanedRequirement = normalizeRequirement(requirement);
 
+  if (!cleanedRequirement) {
+    throw new Error("Please enter a requirement before grooming.");
+  }
+
+  if (cleanedRequirement.length < 10) {
+    throw new Error("Requirement is too short. Please enter at least 10 characters.");
+  }
+
+  if (cleanedRequirement.length > 3000) {
+    throw new Error("Requirement is too long. Please keep it under 3000 characters.");
+  }
+
   if (cleanedRequirement === EXAMPLE_REQUIREMENT) {
     await wait(3000);
 

@@ -12,6 +12,8 @@ const AUTH_KEYWORDS = [
 
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 5;
+const MIN_REQUIREMENT_LENGTH = 10;
+const MAX_REQUIREMENT_LENGTH = 3000;
 const rateLimitStore = globalThis.__groomStoryRateLimitStore || new Map();
 
 globalThis.__groomStoryRateLimitStore = rateLimitStore;
@@ -196,6 +198,24 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed." });
   }
 
+  const requirement = String(req.body?.requirement || "").trim();
+
+  if (!requirement) {
+    return res.status(400).json({ error: "Please enter a requirement before grooming." });
+  }
+
+  if (requirement.length < MIN_REQUIREMENT_LENGTH) {
+    return res.status(400).json({
+      error: "Requirement is too short. Please enter at least 10 characters."
+    });
+  }
+
+  if (requirement.length > MAX_REQUIREMENT_LENGTH) {
+    return res.status(400).json({
+      error: "Requirement is too long. Please keep it under 3000 characters."
+    });
+  }
+
   const clientIp = getClientIp(req);
 
   if (isRateLimited(clientIp)) {
@@ -205,12 +225,6 @@ export default async function handler(req, res) {
     return res.status(429).json({
       error: "Too many requests. Please try again later."
     });
-  }
-
-  const requirement = String(req.body?.requirement || "").trim();
-
-  if (!requirement) {
-    return res.status(400).json({ error: "Requirement text is required." });
   }
 
   logGroomStory("GROQ_API_KEY presence checked", {
